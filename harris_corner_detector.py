@@ -53,7 +53,7 @@ if __name__ == '__main__':
     image_gradient_magnitude = np.sqrt(np.add(np.multiply(gradient_x2_summation,gradient_x2_summation), np.multiply(gradient_y2_summation,gradient_y2_summation)))
 
     #perform non-maximum supression
-    image_gradient_orientation = np.pad(image_gradient_orientation, (3, 3), 'constant')
+    #image_gradient_orientation = np.pad(image_gradient_orientation, (3, 3), 'constant')
     corner_responses = np.pad(corner_responses, (3,3), 'constant')
     #threshold = 10000
     stop_looping = False
@@ -85,3 +85,47 @@ if __name__ == '__main__':
     print("Number of keypoints: ", len(keypoints))
     corners_image = cv2.drawKeypoints(image, keypoints, outImage=None, color=(0, 0, 255), flags=0)
     utl.show_image("Keypoints in the image", corners_image)
+
+    #create sift descriptors for all corner points
+    image_gradient_orientation = np.pad(image_gradient_orientation, (8, 8), 'constant')
+    image_gradient_magnitude = np.pad(image_gradient_magnitude, (8, 8), 'constant')
+    keypoint_descriptors = []
+    for keypoint in keypoints:
+        x = int(keypoint.pt[1]) + 8
+        y = int(keypoint.pt[0]) + 8
+        window = 16
+        orientation_sub_patches = []
+        magnitude_sub_patches = []
+        desc = []
+
+        #create sub patches
+        for i in range(y - (window // 2), y + (window // 2), 4):
+            for j in range(x - (window // 2), x + (window // 2), 4):
+                orientation_sub_patches.append(image_gradient_orientation[i:i + 4, j:j + 4])
+                magnitude_sub_patches.append(image_gradient_magnitude[i:i + 4, j:j + 4])
+
+        #make the patches align with x-axis based on the dominant orientation to achieve rotation invariance
+        for i in range(len(orientation_sub_patches)):
+            hist, bins  = np.histogram(orientation_sub_patches[i], bins=[0, 11.25, 22.50, 33.75, 45.00, 56.25, 67.50, 78.75, 90.00])
+            values_bin_indices = np.digitize(orientation_sub_patches[i], bins=bins)
+            ele = []
+            for k in range(values_bin_indices.shape[0]):
+                for l in range(values_bin_indices.shape[1]):
+                    if values_bin_indices[k][l]-1==list(hist).index(int(hist.max())):
+                        ele.append(orientation_sub_patches[i][k][l])
+            dominant_orientation = np.array(ele).mean()
+            orientation_sub_patches[i] = [x-dominant_orientation for x in orientation_sub_patches[i]]
+
+        #create histogram
+        for i in range(len(orientation_sub_patches)):
+            hist, bins = np.histogram(orientation_sub_patches[i], bins=[-90.00, -67.5, -45.00, -22.50, 0, 22.50, 45.00, 67.50, 90.00], weights=magnitude_sub_patches[i])
+            hist = [x/np.linalg.norm(hist) for x in hist]
+            for j in range(len(hist)):
+                if j>0.2:
+                    hist[i] = 0.2
+            hist = [x/np.linalg.norm(hist) for x in hist]
+            for j in hist:
+                desc.append(j)
+
+        #store the desc as keypoint descriptor
+        keypoint_descriptors.append(desc)
