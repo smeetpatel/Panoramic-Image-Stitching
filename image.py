@@ -133,7 +133,7 @@ class Image:
                     desc.append(j)
 
             # store the desc as keypoint descriptor
-            keypoint.set_descriptor(self, desc)
+            corner.set_descriptor(self, desc)
         print("SIFT descriptors are calculated.\n\n\n")
 
     def perform_adaptive_non_maximum_supression(self, corner_responses, number_of_keypoints, robust_factor):
@@ -173,4 +173,3 @@ class Corner:
 
     def set_descriptor(self, desc):
         self.descriptor = desc
-

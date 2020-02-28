@@ -6,8 +6,6 @@ from Corners import Corner
 if __name__ == '__main__':
     user_input = input()
 
-
-
     #get image path
     #image_path = "image_sets/yosemite/Yosemite1.jpg"
     image_path = "image_sets/graf/img1.ppm"
