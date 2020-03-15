@@ -3,6 +3,7 @@ import utility as utl
 import numpy as np
 from math import sqrt
 
+
 class Image:
 
     def __init__(self, image_name):
@@ -31,8 +32,8 @@ class Image:
         gradient_xy = cv2.GaussianBlur(gradient_xy, (5, 5), 0, borderType=cv2.BORDER_CONSTANT)
 
         # define window size and offset for calculating corners and related further processing
-        window = (7,7)
-        offset = (-(int(window/2)), int(window/2)+1)
+        window = (7, 7)
+        offset = (-(int(window[0] / 2)), int(window[0] / 2) + 1)
 
         # calculate summation of gradient values around a window of 7x7
         print("Calculating Harris matrix around a window for each pixel")
@@ -77,7 +78,8 @@ class Image:
 
         # perform adaptive non-maximum supression
         print("Performing adaptive non-maximum supression")
-        corner_responses = corner_responses[abs(offset[0]):corner_responses.shape[0] - abs(offset[0]), abs(offset[0]):corner_responses.shape[1] - abs(offset[0])]
+        corner_responses = corner_responses[abs(offset[0]):corner_responses.shape[0] - abs(offset[0]),
+                           abs(offset[0]):corner_responses.shape[1] - abs(offset[0])]
         number_of_keypoints = 500
         robust_factor = 1.1
         self.perform_adaptive_non_maximum_supression(corner_responses, number_of_keypoints, robust_factor)
@@ -110,7 +112,8 @@ class Image:
 
             # make the patches align with x-axis based on the dominant orientation to achieve rotation invariance
             for i in range(len(orientation_sub_patches)):
-                hist, bins = np.histogram(orientation_sub_patches[i], bins=[0, 11.25, 22.50, 33.75, 45.00, 56.25, 67.50, 78.75, 90.00])
+                hist, bins = np.histogram(orientation_sub_patches[i],
+                                          bins=[0, 11.25, 22.50, 33.75, 45.00, 56.25, 67.50, 78.75, 90.00])
                 values_bin_indices = np.digitize(orientation_sub_patches[i], bins=bins)
                 ele = []
                 for k in range(values_bin_indices.shape[0]):
@@ -118,12 +121,14 @@ class Image:
                         if values_bin_indices[k][l] - 1 == list(hist).index(int(hist.max())):
                             ele.append(orientation_sub_patches[i][k][l])
                 dominant_orientation = np.array(ele).mean()
-                #dominant_orientation = image_gradient_orientation[int(keypoint.pt[1])][int(keypoint.pt[0])]
+                # dominant_orientation = image_gradient_orientation[int(keypoint.pt[1])][int(keypoint.pt[0])]
                 orientation_sub_patches[i] = [x - dominant_orientation for x in orientation_sub_patches[i]]
 
             # create histogram for feature descriptor and threshold normalize it to make it contrast invariant
             for i in range(len(orientation_sub_patches)):
-                hist, bins = np.histogram(np.array(orientation_sub_patches[i]), bins=[-90.00, -67.5, -45.00, -22.50, 0.00, 22.50, 45.00, 67.50, 90.00], weights=np.array(magnitude_sub_patches[i]))
+                hist, bins = np.histogram(np.array(orientation_sub_patches[i]),
+                                          bins=[-90.00, -67.5, -45.00, -22.50, 0.00, 22.50, 45.00, 67.50, 90.00],
+                                          weights=np.array(magnitude_sub_patches[i]))
                 hist = utl.get_normalized_vector(hist)
                 for j in range(len(hist)):
                     if hist[j] > 0.2:
@@ -133,20 +138,20 @@ class Image:
                     desc.append(j)
 
             # store the desc as keypoint descriptor
-            corner.set_descriptor(self, desc)
+            corner.set_descriptor(desc)
         print("SIFT descriptors are calculated.\n\n\n")
 
     def perform_adaptive_non_maximum_supression(self, corner_responses, number_of_keypoints, robust_factor):
         temp_list = []
 
-        #make a list of tuples holding (coordinate tuple, response_value) and sort it based on the response value
+        # make a list of tuples holding (coordinate tuple, response_value) and sort it based on the response value
         for i in range(corner_responses.shape[0]):
             for j in range(corner_responses.shape[1]):
                 if corner_responses[i][j] > 0:
                     temp_list.append(((i, j), corner_responses[i][j]))
         temp_list = sorted(temp_list, key=lambda x: x[1], reverse=True)
 
-        #Calculate radius of supression for all points and sort the list in ascending manner based on supression radii
+        # Calculate radius of supression for all points and sort the list in ascending manner based on supression radii
         radii = []
         for i in range(2, len(temp_list)):
             temp_radii = []
@@ -157,7 +162,6 @@ class Image:
             temp_radii.sort()
             radii.append((temp_radii[0], i))
         radii = sorted(radii, key=lambda x: x[0], reverse=True)
-
 
         for i in range(len(radii[:number_of_keypoints])):
             point = temp_list[radii[i][1]][0]
