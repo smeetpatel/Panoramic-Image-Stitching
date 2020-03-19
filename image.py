@@ -1,10 +1,6 @@
-import math
-
 import cv2
 import utility as utl
 import numpy as np
-from math import sqrt
-
 
 class Image:
 
@@ -23,10 +19,6 @@ class Image:
         gradient_x = utl.get_gradient_x(gray_img)
         gradient_y = utl.get_gradient_y(gray_img)
 
-        # show gradient images
-        utl.show_image('Gradient x', gradient_x)
-        utl.show_image('Gradient y', gradient_y)
-
         # get gradient images required for Harris matrix
         gradient_x2 = np.multiply(gradient_x, gradient_x)
         gradient_y2 = np.multiply(gradient_y, gradient_y)
@@ -36,11 +28,6 @@ class Image:
         gradient_x2 = cv2.GaussianBlur(gradient_x2, (3, 3), 0, borderType=cv2.BORDER_CONSTANT)
         gradient_y2 = cv2.GaussianBlur(gradient_y2, (3, 3), 0, borderType=cv2.BORDER_CONSTANT)
         gradient_xy = cv2.GaussianBlur(gradient_xy, (3, 3), 0, borderType=cv2.BORDER_CONSTANT)
-
-        # show Gaussian blurred gradient multiplied images
-        utl.show_image('Gradient x2', gradient_x2)
-        utl.show_image('Gradient y2', gradient_y2)
-        utl.show_image('Gradient xy', gradient_xy)
 
         # define window size and offset for calculating corners and related further processing
         window = (3, 3)
@@ -65,18 +52,14 @@ class Image:
                 else:
                     corner_responses[i][j] = np.linalg.det(harris_matrix) / np.trace(harris_matrix)
 
-        # show corner response
-        utl.show_image('Corner response', corner_responses)
+        #scale corner responses between 0 and 255
         dst = np.empty(corner_responses.shape, dtype=np.float32)
         cv2.normalize(corner_responses, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
         corner_responses = cv2.convertScaleAbs(dst)
 
         # threshold the corner respones
-        threshold = 180
+        threshold = 150
         corner_responses[corner_responses < threshold] = 0
-
-        # show corner response
-        utl.show_image('Corner response after thresholding', corner_responses)
 
         # perform non-maximum supression
         print("Performing non-maximum supression")
@@ -102,43 +85,95 @@ class Image:
                         keypoint = cv2.KeyPoint(j-abs(offset[0]), i-abs(offset[0]), 0)
                         self.corners.append(Corner(keypoint))
 
-        # show corner response
-        utl.show_image('Corner response after NMS', corner_responses)
+        # display number of corners detected and save the image showing detected corners
         number_of_NMS_keypoints = len(self.corners)
         print("Number of keypoints after NMS: ", number_of_NMS_keypoints)
         keypoints = []
         for corner in self.corners:
-            print(corner.keypoint.pt[0], "\t", corner.keypoint.pt[1])
             keypoints.append(corner.keypoint)
         output = cv2.drawKeypoints(self.image, keypoints, np.array([]), color=(0, 0, 255))
-        utl.show_image('output', output)
-
-        #Save the image with keypoints drawn
-        result_image_path = "Results/" + self.image_name
+        result_image_path = utl.result_image_name(self.image_name)
         cv2.imwrite(result_image_path, img=output)
 
         # # perform adaptive non-maximum supression
-        # print("Performing adaptive non-maximum supression")
-        # corner_responses = corner_responses[abs(offset[0]):corner_responses.shape[0] - abs(offset[0]),
-        #                    abs(offset[0]):corner_responses.shape[1] - abs(offset[0])]
-        # if(number_of_NMS_keypoints<500):
-        #     number_of_keypoints = number_of_NMS_keypoints
-        # else:
-        #     number_of_keypoints = 500
-        # # self.adaptive_non_maximum_supression(number_of_keypoints)
-        #
-        # # # number_of_keypoints = 500
-        # robust_factor = 1.0
-        # self.perform_adaptive_non_maximum_supression(corner_responses, number_of_keypoints, robust_factor)
-        #
-        # # show corner response
-        # utl.show_image('Corner response after ANMS', corner_responses)
-        #
-        # # display keypoints
-        # print("Number of keypoints: ", len(self.corners))
-        # utl.save_image(self.corners, self.image, result_image_path)
+        # self.perform_adaptive_non_maximum_supression(corner_responses, number_of_NMS_keypoints, offset)
 
         # calculate SIFT descriptor for all the keypoints
+        self.compute_custom_sift_descriptor(gradient_x2_summation, gradient_y2_summation)
+        # self.compute_opencv_sift_descriptor()
+
+    def detect_sift_corners(self):
+        # convert image to grayscale image
+        gray_img = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+
+        #compute keypoints and descriptors
+        sift = cv2.xfeatures2d.SIFT_create()
+        kp, des = sift.detectAndCompute(gray_img, None)
+
+        #save images with the detected keypoints
+        # img = cv2.drawKeypoints(gray_img, kp, self.image, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        img = cv2.drawKeypoints(gray_img, kp, self.image)
+        result_image_path = utl.result_image_name(self.image_name)
+        cv2.imwrite(result_image_path, img=img)
+
+        #register the detected keypoints and corners in the list self.corners
+        for i in range(len(kp)):
+            self.corners.append(Corner(kp[i]))
+            self.corners[i].set_descriptor(des[i])
+
+    def perform_adaptive_non_maximum_supression(self, corner_responses, number_of_NMS_keypoints, offset):
+        print("Performing adaptive non-maximum supression")
+        corner_responses = corner_responses[abs(offset[0]):corner_responses.shape[0] - abs(offset[0]),
+                           abs(offset[0]):corner_responses.shape[1] - abs(offset[0])]
+        if(number_of_NMS_keypoints>500):
+            number_of_keypoints = 500
+        else:
+            number_of_keypoints = number_of_NMS_keypoints
+        # self.adaptive_non_maximum_supression(number_of_keypoints)
+
+        # # number_of_keypoints = 500
+        robust_factor = 1.1
+        self.perform_ANMS(corner_responses, number_of_keypoints, robust_factor)
+
+        # show corner response
+        utl.show_image('Corner response after ANMS', corner_responses)
+
+        # display keypoints
+        print("Number of keypoints: ", len(self.corners))
+        result_image_path = utl.result_image_name(self.image_name)
+        utl.save_image(self.corners, self.image, result_image_path)
+
+    def perform_ANMS(self, corner_responses, number_of_keypoints, robust_factor):
+        self.corners = []
+        temp_list = []
+
+        # make a list of tuples holding (coordinate tuple, response_value) and sort it based on the response value
+        for i in range(corner_responses.shape[0]):
+            for j in range(corner_responses.shape[1]):
+                if corner_responses[i][j] > 0:
+                    temp_list.append(((i, j), corner_responses[i][j]))
+        temp_list = sorted(temp_list, key=lambda x: x[1], reverse=True)
+
+        # Calculate radius of supression for all points and sort the list in ascending manner based on supression radii
+        radii = []
+        for i in range(2, len(temp_list)):
+            temp_radii = []
+            for j in range(len(temp_list[:i])):
+                if temp_list[i][1] <= robust_factor * temp_list[j][1]:
+                    temp_radii.append(sqrt((temp_list[i][0][0] - temp_list[j][0][0]) ** 2 + (
+                            temp_list[i][0][1] - temp_list[j][0][1]) ** 2))
+            print(temp_list[i][0][0], "\t", temp_list[i][0][1])
+            temp_radii.sort()
+            radii.append((temp_radii[0], i))
+        radii = sorted(radii, key=lambda x: x[0], reverse=True)
+
+        for i in range(len(radii[:number_of_keypoints])):
+            point = temp_list[radii[i][1]][0]
+            cr = temp_list[radii[i][1]][1]
+            keypoint = cv2.KeyPoint(point[1], point[0], 0, _response=cr)
+            self.corners.append(Corner(keypoint))
+
+    def compute_custom_sift_descriptor(self, gradient_x2_summation, gradient_y2_summation):
         print("Creating SIFT descriptor for all the keypoints")
         image_gradient_orientation = cv2.phase(gradient_x2_summation, gradient_y2_summation, angleInDegrees=True)
         image_gradient_magnitude = np.sqrt(np.add(np.multiply(gradient_x2_summation, gradient_x2_summation),
@@ -189,36 +224,6 @@ class Image:
             # store the desc as keypoint descriptor
             corner.set_descriptor(desc)
         print("SIFT descriptors are calculated.\n\n\n")
-
-    def perform_adaptive_non_maximum_supression(self, corner_responses, number_of_keypoints, robust_factor):
-        self.corners = []
-        temp_list = []
-
-        # make a list of tuples holding (coordinate tuple, response_value) and sort it based on the response value
-        for i in range(corner_responses.shape[0]):
-            for j in range(corner_responses.shape[1]):
-                if corner_responses[i][j] > 0:
-                    temp_list.append(((i, j), corner_responses[i][j]))
-        temp_list = sorted(temp_list, key=lambda x: x[1], reverse=True)
-
-        # Calculate radius of supression for all points and sort the list in ascending manner based on supression radii
-        radii = []
-        for i in range(2, len(temp_list)):
-            temp_radii = []
-            for j in range(len(temp_list[:i])):
-                if temp_list[i][1] <= robust_factor * temp_list[j][1]:
-                    temp_radii.append(sqrt((temp_list[i][0][0] - temp_list[j][0][0]) ** 2 + (
-                            temp_list[i][0][1] - temp_list[j][0][1]) ** 2))
-            print(temp_list[i][0][0], "\t", temp_list[i][0][1])
-            temp_radii.sort()
-            radii.append((temp_radii[0], i))
-        radii = sorted(radii, key=lambda x: x[0], reverse=True)
-
-        for i in range(len(radii[:number_of_keypoints])):
-            point = temp_list[radii[i][1]][0]
-            cr = temp_list[radii[i][1]][1]
-            keypoint = cv2.KeyPoint(point[1], point[0], 0, _response=cr)
-            self.corners.append(Corner(keypoint))
 
 class Corner:
     def __init__(self, keypoint):

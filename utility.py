@@ -56,25 +56,85 @@ def save_image(corners, image, title):
     cv2.imwrite(title, image)
 
 
-def get_matches(image_corners_1, image_corners_2):
-    keypoints_1 = image_corners_1.descriptor
-    keypoints_2 = image_corners_2.descriptor
+# def get_matches(image_corners_1, image_corners_2):
+#     keypoints_1 = image_corners_1.descriptor
+#     keypoints_2 = image_corners_2.descriptor
+#
+#     matches = []
+#     test = []
+#
+#     threshold = 0.3
+#     kp = []
+#     for i in range(len(keypoints_1)):
+#         best_matches = []
+#         for j in range(len(keypoints_2)):
+#             dist = np.sum(np.square(np.subtract(keypoints_1[i], keypoints_2[j])))
+#             if dist < threshold:
+#                 best_matches.append((dist, j))
+#             test.append(dist)
+#         if len(best_matches) >= 2:
+#             best_matches = sorted(best_matches, key=lambda x: x[0])
+#             if best_matches[0][0] < 0.80 * best_matches[1][0]:
+#                 kp.append(i)
+#                 matches.append(cv2.DMatch(len(kp) - 1, best_matches[0][1], best_matches[0][0]))
+#     return kp, matches
+
+def get_matches(image_1, image_2):
+    image_1_keypoints = [corner.keypoint for corner in image_1.corners]
+    image_1_descriptors = [corner.descriptor for corner in image_1.corners]
+
+    image_2_keypoints = [corner.keypoint for corner in image_2.corners]
+    image_2_descriptors = [corner.descriptor for corner in image_2.corners]
 
     matches = []
     test = []
+    threshold = 2300
 
-    threshold = 0.3
-    kp = []
-    for i in range(len(keypoints_1)):
+    for i in range(len(image_1_keypoints)):
         best_matches = []
-        for j in range(len(keypoints_2)):
-            dist = np.sum(np.square(np.subtract(keypoints_1[i], keypoints_2[j])))
+        for j in range(len(image_2_keypoints)):
+            # dist = np.sum(np.square(np.subtract(image_1_descriptors[i], image_2_descriptors[j])))
+            dist = 0
+            for index in range(128):
+                dist += abs(image_1_descriptors[i][index] - image_2_descriptors[j][index])
             if dist < threshold:
                 best_matches.append((dist, j))
             test.append(dist)
-        if len(best_matches) >= 2:
+        if (len(best_matches) >= 2):
             best_matches = sorted(best_matches, key=lambda x: x[0])
-            if best_matches[0][0] < 0.80 * best_matches[1][0]:
-                kp.append(i)
-                matches.append(cv2.DMatch(len(kp) - 1, best_matches[0][1], best_matches[0][0]))
-    return kp, matches
+            if best_matches[0][0] < 0.75 * best_matches[1][0]:
+                matches.append(cv2.DMatch(_queryIdx=i, _trainIdx=best_matches[0][1], _distance=best_matches[0][0]))
+
+    match_image = cv2.drawMatches(image_1.image, image_1_keypoints, image_2.image, image_2_keypoints,
+                                  matches1to2=matches, outImg=np.array([]),
+                                  flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    return match_image
+
+
+def result_image_name(image_name):
+    if (image_name == "project_images/Boxes.png"):
+        image_name = "project_images/1a.png"
+    elif (image_name == "project_images/Rainier1.png"):
+        image_name = "project_images/1b.png"
+    elif (image_name == "project_images/Rainier2.png"):
+        image_name = "project_images/1c.png"
+    return "Results/" + image_name
+
+
+def match(image_1, image_2):
+    image_1_keypoints = [corner.keypoint for corner in image_1.corners]
+    image_1_descriptors = [corner.descriptor for corner in image_1.corners]
+
+    image_2_keypoints = [corner.keypoint for corner in image_2.corners]
+    image_2_descriptors = [corner.descriptor for corner in image_2.corners]
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(np.asarray(image_1_descriptors), np.asarray(image_2_descriptors), k=2)
+    # Apply ratio test
+    good = []
+    for m, n in matches:
+        if m.distance < 0.75 * n.distance:
+            good.append([m])
+    # cv.drawMatchesKnn expects list of lists as matches.
+    img3 = cv2.drawMatchesKnn(image_1.image, image_1_keypoints, image_2.image, image_2_keypoints, good, None,
+                              flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    return img3
