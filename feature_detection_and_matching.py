@@ -33,5 +33,5 @@ if __name__ == '__main__':
         image.detect_harris_corners()
         images.append(image)
 
-    matching_image = utl.get_matches(images[1], images[2])
+    matches, matching_image = utl.get_matches(images[1], images[2])
     cv2.imwrite("Results/project_images/2.png", matching_image)

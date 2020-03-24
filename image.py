@@ -1,6 +1,7 @@
 import cv2
 import utility as utl
 import numpy as np
+from math import sqrt
 
 class Image:
 
@@ -52,7 +53,7 @@ class Image:
                 else:
                     corner_responses[i][j] = np.linalg.det(harris_matrix) / np.trace(harris_matrix)
 
-        #scale corner responses between 0 and 255
+        # scale corner responses between 0 and 255
         dst = np.empty(corner_responses.shape, dtype=np.float32)
         cv2.normalize(corner_responses, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
         corner_responses = cv2.convertScaleAbs(dst)
@@ -82,7 +83,7 @@ class Image:
                     if not_local_maxima:
                         not_local_maxima = False
                     else:
-                        keypoint = cv2.KeyPoint(j-abs(offset[0]), i-abs(offset[0]), 0)
+                        keypoint = cv2.KeyPoint(j - abs(offset[0]), i - abs(offset[0]), 0)
                         self.corners.append(Corner(keypoint))
 
         # display number of corners detected and save the image showing detected corners
@@ -100,32 +101,31 @@ class Image:
 
         # calculate SIFT descriptor for all the keypoints
         self.compute_custom_sift_descriptor(gradient_x2_summation, gradient_y2_summation)
-        # self.compute_opencv_sift_descriptor()
 
     def detect_sift_corners(self):
         # convert image to grayscale image
         gray_img = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
 
-        #compute keypoints and descriptors
+        # compute keypoints and descriptors
         sift = cv2.xfeatures2d.SIFT_create()
-        kp, des = sift.detectAndCompute(gray_img, None)
+        keypoints, descriptors = sift.detectAndCompute(self.image, None)
 
-        #save images with the detected keypoints
-        # img = cv2.drawKeypoints(gray_img, kp, self.image, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        img = cv2.drawKeypoints(gray_img, kp, self.image)
+        # save images with the detected keypoints
+        # img = cv2.drawKeypoints(gray_img, keypoints, self.image, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        image = cv2.drawKeypoints(self.image, keypoints, self.image)
         result_image_path = utl.result_image_name(self.image_name)
-        cv2.imwrite(result_image_path, img=img)
+        # utl.show_image(result_image_path, image)
 
-        #register the detected keypoints and corners in the list self.corners
-        for i in range(len(kp)):
-            self.corners.append(Corner(kp[i]))
-            self.corners[i].set_descriptor(des[i])
+        # register the detected keypoints and corners in the list self.corners
+        for i in range(len(keypoints)):
+            self.corners.append(Corner(keypoints[i]))
+            self.corners[i].set_descriptor(descriptors[i])
 
     def perform_adaptive_non_maximum_supression(self, corner_responses, number_of_NMS_keypoints, offset):
         print("Performing adaptive non-maximum supression")
         corner_responses = corner_responses[abs(offset[0]):corner_responses.shape[0] - abs(offset[0]),
                            abs(offset[0]):corner_responses.shape[1] - abs(offset[0])]
-        if(number_of_NMS_keypoints>500):
+        if (number_of_NMS_keypoints > 500):
             number_of_keypoints = 500
         else:
             number_of_keypoints = number_of_NMS_keypoints

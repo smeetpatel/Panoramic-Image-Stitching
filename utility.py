@@ -1,24 +1,31 @@
 import cv2
 import numpy as np
 
-
-def get_gradient_x(image):
-    # define sobel kernel
-    sobel_x_kernel = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
-    return cv2.filter2D(image, -1, sobel_x_kernel)
-
-
-def get_gradient_y(image):
-    # define sobel kernel
-    sobel_y_kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    return cv2.filter2D(image, -1, sobel_y_kernel)
-
-
+# show/save image helper functions
 def show_image(title, image):
     cv2.imshow(title, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+def save_image(corners, image, title):
+    keypoints = [corner.keypoint for corner in corners]
+    for keypoint in keypoints:
+        x = int(keypoint.pt[1])
+        y = int(keypoint.pt[0])
+        image[x][y] = (0, 0, 255)
+    title = title.replace("image_sets", "Results")
+    cv2.imwrite(title, image)
+
+# Harris corner detector helper functions
+def get_gradient_x(image):
+    # define sobel kernel
+    sobel_x_kernel = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+    return cv2.filter2D(image, -1, sobel_x_kernel)
+
+def get_gradient_y(image):
+    # define sobel kernel
+    sobel_y_kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    return cv2.filter2D(image, -1, sobel_y_kernel)
 
 def get_orientation_bin(angle):
     if angle >= 0 and angle < 11.25:
@@ -38,78 +45,11 @@ def get_orientation_bin(angle):
     elif angle >= 78.75 and angle <= 90.00:
         return 8
 
-
 def get_normalized_vector(vector):
     if int(np.linalg.norm(vector)) == 0:
         return vector
     else:
         return [x / np.linalg.norm(vector) for x in vector]
-
-
-def save_image(corners, image, title):
-    keypoints = [corner.keypoint for corner in corners]
-    for keypoint in keypoints:
-        x = int(keypoint.pt[1])
-        y = int(keypoint.pt[0])
-        image[x][y] = (0, 0, 255)
-    title = title.replace("image_sets", "Results")
-    cv2.imwrite(title, image)
-
-
-# def get_matches(image_corners_1, image_corners_2):
-#     keypoints_1 = image_corners_1.descriptor
-#     keypoints_2 = image_corners_2.descriptor
-#
-#     matches = []
-#     test = []
-#
-#     threshold = 0.3
-#     kp = []
-#     for i in range(len(keypoints_1)):
-#         best_matches = []
-#         for j in range(len(keypoints_2)):
-#             dist = np.sum(np.square(np.subtract(keypoints_1[i], keypoints_2[j])))
-#             if dist < threshold:
-#                 best_matches.append((dist, j))
-#             test.append(dist)
-#         if len(best_matches) >= 2:
-#             best_matches = sorted(best_matches, key=lambda x: x[0])
-#             if best_matches[0][0] < 0.80 * best_matches[1][0]:
-#                 kp.append(i)
-#                 matches.append(cv2.DMatch(len(kp) - 1, best_matches[0][1], best_matches[0][0]))
-#     return kp, matches
-
-def get_matches(image_1, image_2):
-    image_1_keypoints = [corner.keypoint for corner in image_1.corners]
-    image_1_descriptors = [corner.descriptor for corner in image_1.corners]
-
-    image_2_keypoints = [corner.keypoint for corner in image_2.corners]
-    image_2_descriptors = [corner.descriptor for corner in image_2.corners]
-
-    matches = []
-    test = []
-    threshold = 2300
-
-    for i in range(len(image_1_keypoints)):
-        best_matches = []
-        for j in range(len(image_2_keypoints)):
-            # dist = np.sum(np.square(np.subtract(image_1_descriptors[i], image_2_descriptors[j])))
-            dist = 0
-            for index in range(128):
-                dist += abs(image_1_descriptors[i][index] - image_2_descriptors[j][index])
-            if dist < threshold:
-                best_matches.append((dist, j))
-            test.append(dist)
-        if (len(best_matches) >= 2):
-            best_matches = sorted(best_matches, key=lambda x: x[0])
-            if best_matches[0][0] < 0.75 * best_matches[1][0]:
-                matches.append(cv2.DMatch(_queryIdx=i, _trainIdx=best_matches[0][1], _distance=best_matches[0][0]))
-
-    match_image = cv2.drawMatches(image_1.image, image_1_keypoints, image_2.image, image_2_keypoints,
-                                  matches1to2=matches, outImg=np.array([]),
-                                  flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-    return match_image
-
 
 def result_image_name(image_name):
     if (image_name == "project_images/Boxes.png"):
@@ -120,6 +60,32 @@ def result_image_name(image_name):
         image_name = "project_images/1c.png"
     return "Results/" + image_name
 
+# helper functions to get matches between images based on detected keypoints
+def get_matches(image_1, image_2):
+    image_1_keypoints = [corner.keypoint for corner in image_1.corners]
+    image_1_descriptors = [corner.descriptor for corner in image_1.corners]
+
+    image_2_keypoints = [corner.keypoint for corner in image_2.corners]
+    image_2_descriptors = [corner.descriptor for corner in image_2.corners]
+
+    matches = []
+    threshold = 2300
+
+    for i in range(len(image_1_keypoints)):
+        best_matches = []
+        for j in range(len(image_2_keypoints)):
+            dist = np.sum(np.absolute(np.array(image_1_descriptors[i]) - np.array(image_2_descriptors[j])))
+            if dist < threshold:
+                best_matches.append((dist, j))
+        if len(best_matches) >= 2:
+            best_matches = sorted(best_matches, key=lambda x: x[0])
+            if best_matches[0][0] < 0.75 * best_matches[1][0]:
+                matches.append(cv2.DMatch(_queryIdx=i, _trainIdx=best_matches[0][1], _distance=best_matches[0][0]))
+
+    match_image = cv2.drawMatches(image_1.image, image_1_keypoints, image_2.image, image_2_keypoints,
+                                  matches1to2=matches, outImg=np.array([]),
+                                  flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    return matches, match_image
 
 def match(image_1, image_2):
     image_1_keypoints = [corner.keypoint for corner in image_1.corners]
@@ -138,3 +104,7 @@ def match(image_1, image_2):
     img3 = cv2.drawMatchesKnn(image_1.image, image_1_keypoints, image_2.image, image_2_keypoints, good, None,
                               flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
     return img3
+
+# helper functions for RANSAC
+def get_distance(actual_x, actual_y, projected_x, projected_y):
+    return abs(actual_x - projected_x) + abs(actual_y - projected_y)
