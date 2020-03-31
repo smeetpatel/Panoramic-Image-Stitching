@@ -1,11 +1,14 @@
 import cv2
+import math
 import numpy as np
+
 
 # show/save image helper functions
 def show_image(title, image):
     cv2.imshow(title, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 def save_image(corners, image, title):
     keypoints = [corner.keypoint for corner in corners]
@@ -16,16 +19,19 @@ def save_image(corners, image, title):
     title = title.replace("image_sets", "Results")
     cv2.imwrite(title, image)
 
+
 # Harris corner detector helper functions
 def get_gradient_x(image):
     # define sobel kernel
     sobel_x_kernel = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
     return cv2.filter2D(image, -1, sobel_x_kernel)
 
+
 def get_gradient_y(image):
     # define sobel kernel
     sobel_y_kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
     return cv2.filter2D(image, -1, sobel_y_kernel)
+
 
 def get_orientation_bin(angle):
     if angle >= 0 and angle < 11.25:
@@ -45,11 +51,13 @@ def get_orientation_bin(angle):
     elif angle >= 78.75 and angle <= 90.00:
         return 8
 
+
 def get_normalized_vector(vector):
     if int(np.linalg.norm(vector)) == 0:
         return vector
     else:
         return [x / np.linalg.norm(vector) for x in vector]
+
 
 def result_image_name(image_name):
     if (image_name == "project_images/Boxes.png"):
@@ -59,6 +67,7 @@ def result_image_name(image_name):
     elif (image_name == "project_images/Rainier2.png"):
         image_name = "project_images/1c.png"
     return "Results/" + image_name
+
 
 # helper functions to get matches between images based on detected keypoints
 def get_matches(image_1, image_2):
@@ -87,6 +96,7 @@ def get_matches(image_1, image_2):
                                   flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
     return matches, match_image
 
+
 def match(image_1, image_2):
     image_1_keypoints = [corner.keypoint for corner in image_1.corners]
     image_1_descriptors = [corner.descriptor for corner in image_1.corners]
@@ -105,6 +115,41 @@ def match(image_1, image_2):
                               flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
     return img3
 
+
 # helper functions for RANSAC
 def get_distance(actual_x, actual_y, projected_x, projected_y):
     return abs(actual_x - projected_x) + abs(actual_y - projected_y)
+
+
+# helper functions for stitching the images
+def get_empty_stitched_image(image_1, image_2_tl, image_2_tr, image_2_bl, image_2_br):
+    max_x = max(len(image_1.image), image_2_tl[1], image_2_tr[1], image_2_bl[1], image_2_br[1])
+    min_x = min(len(image_1.image), image_2_tl[1], image_2_tr[1], image_2_bl[1], image_2_br[1])
+    max_y = max(len(image_1.image[0]), image_2_tl[0], image_2_tr[0], image_2_bl[0], image_2_br[0])
+    min_y = min(len(image_1.image[0]), image_2_tl[0], image_2_tr[0], image_2_bl[0], image_2_br[0])
+
+    if min_x < 0:
+        stitched_image_height = max_x + abs(min_x)
+    else:
+        stitched_image_height = max_x
+    if min_y < 0:
+        stitched_image_width = max_y + abs(min_y)
+    else:
+        stitched_image_width = max_y
+    # stitched_image = np.zeros((math.ceil(stitched_image_height), math.ceil(stitched_image_width), 3))
+    stitched_image = np.zeros((math.ceil(stitched_image_height), math.ceil(stitched_image_width), 3))
+    # print("Shape of stitched image should look something like: ",
+    #       stitched_image.shape)
+    return stitched_image
+
+
+def within_boundary_check(projected_point, image_2_tl, image_2_tr, image_2_bl, image_2_br):
+    if (projected_point[0] < image_2_tl[0] or projected_point[1] < image_2_tl[1]) and image_2_tl < image_2_bl:
+        return False
+    elif (projected_point[0] < image_2_bl[0] or projected_point[1] < image_2_bl[1]) and image_2_bl <= image_2_tl:
+        return False
+    elif (projected_point[0] > image_2_tr[0] or projected_point[1] > image_2_tr[1]) and image_2_tr > image_2_br:
+        return False
+    elif (projected_point[0] > image_2_br[0] or projected_point[1] > image_2_br[1]) and image_2_br >= image_2_tr:
+        return False
+    return True

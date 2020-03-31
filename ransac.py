@@ -49,7 +49,8 @@ def RANSAC (matches , numMatches, numIterations, inlierThreshold, hom, homInv, i
         source_points = np.float32([image_1_keypoints[match.queryIdx].pt for match in matches_sample])
         destination_points = np.float32([image_2_keypoints[match.trainIdx].pt for match in matches_sample])
         homography, mask = cv2.findHomography(source_points, destination_points, 0)
-
+        if homography is None:
+            continue
         number_of_inliers, inlier_matches = computeInlierCount(homography, matches, inlierThreshold, image_1_keypoints, image_2_keypoints)
 
         if number_of_inliers > maximum_inliers:
@@ -61,7 +62,7 @@ def RANSAC (matches , numMatches, numIterations, inlierThreshold, hom, homInv, i
     destination_points = np.float32([image_2_keypoints[match.trainIdx].pt for match in best_homography_inliers])
     homography, mask = cv2.findHomography(source_points, destination_points, 0)
     inverse_homography = np.linalg.inv(homography)
-    # inverse_homography_2, _ = cv2.findHomography(destination_points, source_points, 0)
+    # inverse_homography, _ = cv2.findHomography(destination_points, source_points, 0)
 
     # Generate image with inlier matches
     match_image = cv2.drawMatches(image1Display.image, image_1_keypoints, image2Display.image, image_2_keypoints,
