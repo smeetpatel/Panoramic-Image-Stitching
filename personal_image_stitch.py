@@ -5,6 +5,18 @@ import ransac
 from image import Image
 from stitch import stitch
 
+"""
+This module demonstrates the following:
+
+1) Implementation of stitching algorithm to stitch multiple images captured by me:
+    - Calculate SIFT corners and descriptors, find matches, filter out best matches and calculate apt homography
+    - For multiple images:
+        - Select first image
+        - Select image to stitch it with based on maximum number of inlier matches with the argument image
+        - Stitch the selected image
+        - Detect the corners for this new stitched image
+        - Repeat this process to find next image to stitch and so on till all images are stitched.
+"""
 if __name__ == '__main__':
     ransac_match_images = images = ['misc/personal_1.jpg', 'misc/personal_2.jpg', 'misc/personal_3.jpg']
     images = []
@@ -12,9 +24,9 @@ if __name__ == '__main__':
     for argumentImage in ransac_match_images:
         image = Image(argumentImage)
         image.detect_sift_corners()
-        # image.detect_harris_corners()
         images.append(image)
 
+    # stitch images
     final_image = images[0]
     images = images[1:]
     index = 1

@@ -5,6 +5,16 @@ import ransac
 from image import Image
 from stitch import stitch
 
+"""
+This module demonstrates the following:
+
+1) Implementation to stitch images.
+    - Calculates keypoints in input files: 'project_images/Rainier1.png' and 'project_images/Rainier2.png'
+    - Find matches between the above images
+    - Run RANSAC algorithm on the matching image generated above
+    - Stitch the images using the homography calculated in the above step
+    - Save the image as 'Results/project_images/4.png'
+"""
 if __name__ == '__main__':
     ransac_match_images = ['project_images/Rainier1.png', 'project_images/Rainier2.png']
     images = []
@@ -12,7 +22,6 @@ if __name__ == '__main__':
     for argumentImage in ransac_match_images:
         image = Image(argumentImage)
         image.detect_harris_corners()
-        # image.detect_sift_corners()
         images.append(image)
 
     print("Calculating the matches between the argument images.")
