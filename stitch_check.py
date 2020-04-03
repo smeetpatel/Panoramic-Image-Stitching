@@ -19,7 +19,7 @@ if __name__ == '__main__':
     matches, matching_image = utl.get_matches(images[0], images[1])
 
     print("Finding inlier matches")
-    homography, inverse_homography, match_image = ransac.RANSAC(matches=matches, numMatches=4, numIterations=150, inlierThreshold=50, hom=None, homInv=None, image1Display=images[0], image2Display=images[1])
+    homography, inverse_homography, match_image, number_of_inliers = ransac.RANSAC(matches=matches, numMatches=4, numIterations=150, inlierThreshold=50, hom=None, homInv=None, image1Display=images[0], image2Display=images[1])
 
     print("Stitching the image")
     stitched_image = stitch(images[0], images[1], homography, inverse_homography)

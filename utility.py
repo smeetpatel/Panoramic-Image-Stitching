@@ -1,6 +1,8 @@
 import cv2
 import math
 import numpy as np
+from shapely.geometry import Point, Polygon
+
 
 
 # show/save image helper functions
@@ -69,7 +71,7 @@ def result_image_name(image_name):
     return "Results/" + image_name
 
 
-# helper functions to get matches between images based on detected keypoints
+# helper functions to get matches between images based on detected key points
 def get_matches(image_1, image_2):
     image_1_keypoints = [corner.keypoint for corner in image_1.corners]
     image_1_descriptors = [corner.descriptor for corner in image_1.corners]
@@ -138,18 +140,10 @@ def get_empty_stitched_image(image_1, image_2_tl, image_2_tr, image_2_bl, image_
         stitched_image_width = max_y
     # stitched_image = np.zeros((math.ceil(stitched_image_height), math.ceil(stitched_image_width), 3))
     stitched_image = np.zeros((math.ceil(stitched_image_height), math.ceil(stitched_image_width), 3))
-    # print("Shape of stitched image should look something like: ",
-    #       stitched_image.shape)
     return stitched_image
 
-
-def within_boundary_check(projected_point, image_2_tl, image_2_tr, image_2_bl, image_2_br):
-    if (projected_point[0] < image_2_tl[0] or projected_point[1] < image_2_tl[1]) and image_2_tl < image_2_bl:
-        return False
-    elif (projected_point[0] < image_2_bl[0] or projected_point[1] < image_2_bl[1]) and image_2_bl <= image_2_tl:
-        return False
-    elif (projected_point[0] > image_2_tr[0] or projected_point[1] > image_2_tr[1]) and image_2_tr > image_2_br:
-        return False
-    elif (projected_point[0] > image_2_br[0] or projected_point[1] > image_2_br[1]) and image_2_br >= image_2_tr:
-        return False
-    return True
+def within_boundary_check(projected_point, image_2):
+    image_2_boundary = np.array([[0, 0], [len(image_2.image[0]), 0], [len(image_2.image[0]), len(image_2.image)], [0, len(image_2.image)]])
+    if cv2.pointPolygonTest(image_2_boundary, projected_point, False) == 1.0:
+        return True
+    return False

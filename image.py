@@ -112,8 +112,10 @@ class Image:
 
         # save images with the detected keypoints
         # img = cv2.drawKeypoints(gray_img, keypoints, self.image, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        image = cv2.drawKeypoints(self.image, keypoints, self.image)
+        # image = cv2.drawKeypoints(self.image, keypoints, self.image)
+        output = cv2.drawKeypoints(self.image, keypoints, np.array([]))
         result_image_path = utl.result_image_name(self.image_name)
+        # cv2.imwrite(result_image_path, img=output)
         # utl.show_image(result_image_path, image)
 
         # register the detected keypoints and corners in the list self.corners

@@ -18,6 +18,6 @@ if __name__ == '__main__':
     cv2.imwrite("Results/project_images/2.png", matching_image)
 
     print("Finding inlier matches")
-    homography, inverse_homography, match_image = ransac.RANSAC(matches=matches, numMatches=4, numIterations=150, inlierThreshold=50, hom=None, homInv=None, image1Display=images[0], image2Display=images[1])
+    homography, inverse_homography, match_image, number_of_inliers = ransac.RANSAC(matches=matches, numMatches=4, numIterations=150, inlierThreshold=50, hom=None, homInv=None, image1Display=images[0], image2Display=images[1])
     # utl.show_image('Match image', match_image)
     cv2.imwrite("Results/project_images/3.png", match_image)

@@ -7,6 +7,9 @@ def project(x1,y1,H):
     x2 = H[0][0]*x1 + H[0][1]*y1 + H[0][2]
     y2 = H[1][0]*x1 + H[1][1]*y1 + H[1][2]
     w = H[2][0]*x1 + H[2][1]*y1 + H[2][2]
+
+    if w == 0:
+        return None, None
     x2 /= w
     y2 /= w
 
@@ -26,6 +29,8 @@ def computeInlierCount(H, matches, inlierThreshold, image_1_keypoints, image_2_k
     inlier_matches = []
     for point_index in range(len(source_points)):
         x, y = project(source_points[point_index][0], source_points[point_index][1], H)
+        if x == None:
+            continue
         distance = utl.get_distance(destination_points[point_index][0], destination_points[point_index][1], x, y)
         if distance <= inlierThreshold:
             number_of_inliers += 1
@@ -34,6 +39,9 @@ def computeInlierCount(H, matches, inlierThreshold, image_1_keypoints, image_2_k
     return number_of_inliers, inlier_matches
 
 def RANSAC (matches , numMatches, numIterations, inlierThreshold, hom, homInv, image1Display, image2Display):
+    if len(matches) < 4:
+        return None, None, None, 0
+
     # get image keypoints
     image_1_keypoints = [corner.keypoint for corner in image1Display.corners]
     image_2_keypoints = [corner.keypoint for corner in image2Display.corners]
@@ -69,4 +77,4 @@ def RANSAC (matches , numMatches, numIterations, inlierThreshold, hom, homInv, i
                                   matches1to2=best_homography_inliers[:10], outImg=np.array([]),
                                   flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
-    return homography, inverse_homography, match_image
+    return homography, inverse_homography, match_image, maximum_inliers

@@ -27,7 +27,13 @@ def stitch(image_1, image_2, homography, inverse_homography):
     for row in range(leave_top, leave_top + len(image_1.image)):
         img1_col = 0
         for column in range(leave_left, leave_left + len(image_1.image[0])):
-            stitched_image[row][column] = image_1.image[img1_row][img1_col]
+            projected_point = project(img1_col, img1_row, homography)
+            # if utl.within_boundary_check(projected_point, image_2_tl, image_2_tr, image_2_bl, image_2_br):
+            if utl.within_boundary_check(projected_point, image_2):
+                dst = cv2.getRectSubPix(image=image_2.image, patchSize=(1,1), center=projected_point)
+                stitched_image[row][column] = dst[0][0]
+            else:
+                stitched_image[row][column] = image_1.image[img1_row][img1_col]
             img1_col = img1_col + 1
         img1_row = img1_row + 1
 
@@ -35,8 +41,8 @@ def stitch(image_1, image_2, homography, inverse_homography):
     for row in range(len(stitched_image)):
         for column in range(len(stitched_image[0])):
             projected_point = project(column - leave_left, row - leave_top, homography)
-
-            if utl.within_boundary_check(projected_point, image_2_tl, image_2_tr, image_2_bl, image_2_br):
+            # if utl.within_boundary_check(projected_point, image_2_tl, image_2_tr, image_2_bl, image_2_br):
+            if utl.within_boundary_check(projected_point, image_2):
                 dst = cv2.getRectSubPix(image=image_2.image, patchSize=(1,1), center=projected_point)
                 stitched_image[row][column] = dst[0][0]
 
